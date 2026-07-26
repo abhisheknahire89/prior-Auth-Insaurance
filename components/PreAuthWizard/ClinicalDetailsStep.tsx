@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ClinicalDetails, ClinicalDataSource, DiagnosisEntry, WizardVitals, CaseComplexity, PatientRecord, InsurancePolicyDetails, PreAuthRecord } from '../PreAuthWizard/types';
 import { searchICD10 } from '../../config/icd10Database';
 import { ICDPicker } from './ICDPicker';
+import { EvidenceChecklist } from '../EvidenceChecklist';
 import { performNoteDocumentComparison, NoteComparisonItem, NoteComparisonReport } from '../../services/noteDocumentComparison';
 import { resolveDiagnosisToIcd, getCachedNormalization } from '../../services/icdService';
 
@@ -229,11 +230,13 @@ export const ClinicalDetailsStep: React.FC<ClinicalDetailsStepProps> = ({
     }
 
     return (
-        <div className="space-y-5 text-opd-text-primary">
-            <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold font-lora text-opd-primary">Clinical Details</h2>
-                <button onClick={() => setDataSource(null)} className="text-xs text-opd-text-secondary hover:text-opd-primary transition-colors underline" type="button">Change source</button>
-            </div>
+        <div className="flex gap-5 text-opd-text-primary">
+            {/* Main Content */}
+            <div className="flex-1 space-y-5">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold font-lora text-opd-primary">Clinical Details</h2>
+                    <button onClick={() => setDataSource(null)} className="text-xs text-opd-text-secondary hover:text-opd-primary transition-colors underline" type="button">Change source</button>
+                </div>
 
             {/* Presenting Illness */}
             <div className="card-premium space-y-4">
@@ -740,16 +743,22 @@ export const ClinicalDetailsStep: React.FC<ClinicalDetailsStepProps> = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-1">
-                <button onClick={onBack} className="btn-secondary py-2" type="button">
-                    ← Back
-                </button>
-                <button onClick={onNext} disabled={!isValid} type="button"
-                    className="btn-primary py-2">
-                    Continue to Admission & Cost
-                </button>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                    <button onClick={onBack} className="btn-secondary py-2" type="button">
+                        ← Back
+                    </button>
+                    <button onClick={onNext} disabled={!isValid} type="button"
+                        className="btn-primary py-2">
+                        Continue to Admission & Cost
+                    </button>
+                </div>
+                {!isValid && <p className="text-[10px] text-amber-600 font-semibold text-center mt-1">Add diagnosis (with confirmed ICD-10 code), treatment line, and OPD justification to continue</p>}
             </div>
-            {!isValid && <p className="text-[10px] text-amber-600 font-semibold text-center mt-1">Add diagnosis (with confirmed ICD-10 code), treatment line, and OPD justification to continue</p>}
+
+            {/* Right Sidebar - Evidence Checklist (hidden on mobile) */}
+            <div className="hidden lg:block w-80 flex-shrink-0 sticky top-4 h-fit">
+                <EvidenceChecklist clinical={clinical} />
+            </div>
         </div>
     );
 };
