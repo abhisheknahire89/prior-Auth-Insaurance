@@ -220,6 +220,16 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
     const totals = calculateTotals(cost, sumInsured);
     const isValid = !!(admission.admissionType && admission.dateOfAdmission && admission.roomCategory && totals.totalEstimatedCost > 0);
 
+    // Calculate proportional deduction breakdown
+    const los = admission.expectedLengthOfStay ?? 1;
+    const isICU = admission.roomCategory?.toUpperCase()?.includes('ICU');
+    const capPercentage = isICU ? 2 : 1;
+    const maxRoomRent = (sumInsured * capPercentage * los) / 100;
+    const actualRoomRent = ((cost.roomRentPerDay ?? 0) * los) + ((cost.icuChargesPerDay ?? 0) * (admission.expectedDaysInICU ?? 0));
+    const roomRentExceeded = actualRoomRent > maxRoomRent;
+    const deductionPercentage = roomRentExceeded ? (actualRoomRent - maxRoomRent) / actualRoomRent : 0;
+    const [showDeductionDetail, setShowDeductionDetail] = useState(false);
+
     return (
         <div className="space-y-5 text-opd-text-primary">
             <h2 className="text-base font-bold font-lora text-opd-primary uppercase tracking-wider">Admission & Cost Estimation</h2>
@@ -515,6 +525,43 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {/* Proportional Deduction Breakdown */}
+                {roomRentExceeded && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                        <button
+                            onClick={() => setShowDeductionDetail(!showDeductionDetail)}
+                            className="w-full flex items-center justify-between text-sm font-semibold text-amber-900 hover:bg-amber-100 p-2 rounded transition-colors"
+                        >
+                            <span className="flex items-center gap-2">
+                                <span>⚠️ Room Rent Cap Violation & Proportional Deduction Applied</span>
+                            </span>
+                            <span className="text-xs">{showDeductionDetail ? '▼' : '▶'}</span>
+                        </button>
+
+                        {showDeductionDetail && (
+                            <div className="space-y-2 pt-2 border-t border-amber-200">
+                                <div className="text-xs space-y-1.5">
+                                    <div className="flex justify-between">
+                                        <span className="text-amber-800">Max allowed room rent ({capPercentage}% × {los} days):</span>
+                                        <span className="font-mono font-semibold text-amber-900">₹{formatCostDisplay(maxRoomRent)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-amber-800">Actual room rent:</span>
+                                        <span className="font-mono font-semibold text-red-600">₹{formatCostDisplay(actualRoomRent)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-t border-amber-200 pt-1.5">
+                                        <span className="text-amber-900 font-semibold">Deduction percentage:</span>
+                                        <span className="font-mono font-bold text-red-600">{(deductionPercentage * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="mt-2 bg-white rounded p-2 text-[10px] text-amber-900 leading-relaxed">
+                                        <strong>Impact:</strong> All associated charges will be reduced by {(deductionPercentage * 100).toFixed(1)}% to stay within the policy cap for room rent.
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

@@ -10,6 +10,7 @@ import { AdmissionCostStep } from './AdmissionCostStep';
 import { DocumentsGenerateStep } from './DocumentsGenerateStep';
 import { ClaimReadinessRail } from './ClaimReadinessRail';
 import { ValidationModal } from './ValidationModal';
+import { SaveIndicator } from '../SaveIndicator';
 import { VoiceExtractedData } from '../../services/voiceDictationService';
 import { savePreAuth, savePatient, generatePreAuthId, generatePatientId } from '../../services/masterPatientRecord';
 import { calculateTotals } from '../../utils/costCalculator';
@@ -246,12 +247,15 @@ export const PreAuthWizard: React.FC<PreAuthWizardProps> = ({
         setRecord(finalUpdated);
 
         try {
+            setSaving(true);
             if (typeof window !== 'undefined') {
                 localStorage.setItem('aivana_active_preauth_draft', JSON.stringify(finalUpdated));
             }
             await savePreAuth(finalUpdated);
         } catch (e) {
             console.error('[PreAuthWizard] Failed to save pre-auth to database:', e);
+        } finally {
+            setSaving(false);
         }
     }, []);
 
@@ -615,6 +619,9 @@ export const PreAuthWizard: React.FC<PreAuthWizardProps> = ({
                         setPendingStepAfterValidation(null);
                     }}
                 />
+
+                {/* Save Indicator */}
+                <SaveIndicator isSaving={saving} />
             </div>
         </div>
     );

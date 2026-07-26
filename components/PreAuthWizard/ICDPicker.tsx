@@ -14,6 +14,14 @@ interface ICDPickerProps {
   doctorName?: string;
 }
 
+// Helper function to extract breadcrumb from ICD-10 code
+const getICDBreadcrumb = (code: string): string[] => {
+  if (!code || code.length < 1) return [];
+  const chapter = code.charAt(0); // First letter (A-Z)
+  const section = code.substring(0, 3); // First 3 chars (e.g., A00)
+  return ['ICD-10', chapter, section];
+};
+
 export const ICDPicker: React.FC<ICDPickerProps> = ({
   caseId,
   diagnosisText,
@@ -226,25 +234,81 @@ export const ICDPicker: React.FC<ICDPickerProps> = ({
 
           {/* Selected Candidate Confirmation Details */}
           {selectedCandidate && (
-            <div className="bg-primary-tint/20 border border-opd-primary/20 rounded-xl p-3.5 space-y-2.5 shadow-sm">
-              <div className="text-xs text-opd-text-primary">
-                Are you sure you want to select: <strong className="font-mono text-opd-primary font-bold">{selectedCandidate.code}</strong> - <strong>{selectedCandidate.description}</strong>?
+            <div className="bg-primary-tint/20 border border-opd-primary/20 rounded-xl p-3.5 space-y-3 shadow-sm">
+              {/* Breadcrumb Navigation */}
+              <div className="flex items-center gap-1.5 text-[9px] text-opd-text-secondary">
+                {getICDBreadcrumb(selectedCandidate.code).map((crumb, idx, arr) => (
+                  <div key={idx} className="flex items-center gap-1.5">
+                    <span className="font-semibold text-opd-text-primary">{crumb}</span>
+                    {idx < arr.length - 1 && <span className="text-opd-border">›</span>}
+                  </div>
+                ))}
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleConfirm}
-                  className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white transition-colors shadow-sm"
-                  type="button"
-                >
-                  Confirm Selection
-                </button>
-                <button
-                  onClick={() => setSelectedCandidate(null)}
-                  className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-white border border-opd-border hover:bg-gray-50 text-opd-text-secondary transition-colors shadow-sm"
-                  type="button"
-                >
-                  Cancel
-                </button>
+
+              {/* Code and Description */}
+              <div className="space-y-1.5">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono text-opd-primary font-bold text-sm bg-white px-2.5 py-1 rounded border border-opd-primary/30">
+                    {selectedCandidate.code}
+                  </span>
+                  <span className="text-sm font-semibold text-opd-text-primary">{selectedCandidate.description}</span>
+                </div>
+
+                {/* Confidence Score with Percentage */}
+                <div className="flex items-center gap-2 pt-1">
+                  <span className={`text-[9px] font-bold px-2 py-1 rounded uppercase border flex items-center gap-1 ${
+                    selectedCandidate.confidence === 'high' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    selectedCandidate.confidence === 'medium' ? 'bg-primary-tint text-opd-primary border-opd-primary/10' :
+                    'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    <span>●</span> {selectedCandidate.confidence.toUpperCase()} CONFIDENCE
+                  </span>
+                  <span className="text-[9px] text-opd-text-secondary font-semibold italic">
+                    {selectedCandidate.matchMethod.replace('_', ' ')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Similar Codes Suggestion */}
+              {candidates.length > 1 && (
+                <div className="pt-2 border-t border-opd-primary/10">
+                  <div className="text-[9px] text-opd-text-secondary font-semibold mb-1.5">💡 Similar codes available:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {candidates.filter(c => c.code !== selectedCandidate.code).slice(0, 3).map(c => (
+                      <button
+                        key={c.code}
+                        onClick={() => setSelectedCandidate(c)}
+                        className="text-[8px] px-2 py-1 rounded bg-white border border-opd-border/50 text-opd-text-secondary hover:border-opd-primary hover:text-opd-primary transition-colors font-mono font-semibold"
+                        type="button"
+                      >
+                        {c.code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Confirmation */}
+              <div className="space-y-2 pt-1">
+                <div className="text-xs text-opd-text-primary">
+                  Confirm selection of <strong className="font-mono text-opd-primary">{selectedCandidate.code}</strong>?
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleConfirm}
+                    className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white transition-colors shadow-sm"
+                    type="button"
+                  >
+                    Confirm Selection
+                  </button>
+                  <button
+                    onClick={() => setSelectedCandidate(null)}
+                    className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-white border border-opd-border hover:bg-gray-50 text-opd-text-secondary transition-colors shadow-sm"
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}
