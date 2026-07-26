@@ -34,10 +34,54 @@ export const VoiceDictationMode: React.FC<VoiceDictationModeProps> = ({
     const [extracted, setExtracted] = useState<VoiceExtractedData | null>(null);
     const [errorMsg, setErrorMsg] = useState('');
     const [elapsed, setElapsed] = useState(0);
+    const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
     const recognitionRef = useRef<any>(null);
     const shouldRestartRef = useRef(false);   // stable flag survives instance recreation
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // ── Restore voice data on mount ────────────────────────────────────────────
+    useEffect(() => {
+        const saved = localStorage.getItem('aivana_voice_session');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                if (data.transcript) setTranscript(data.transcript);
+                if (data.extracted) setExtracted(data.extracted);
+                if (data.lastSavedAt) setLastSavedAt(data.lastSavedAt);
+                if (data.phase && data.phase !== 'idle') setPhase(data.phase);
+            } catch (e) {
+                console.warn('Failed to restore voice session:', e);
+            }
+        }
+    }, []);
+
+    // ── Auto-save transcript and extracted data with debouncing ─────────────────
+    useEffect(() => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+
+        if (transcript.trim() || extracted) {
+            debounceTimerRef.current = setTimeout(() => {
+                const now = new Date();
+                const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                const sessionData = {
+                    transcript,
+                    extracted,
+                    phase,
+                    lastSavedAt: timeStr
+                };
+                localStorage.setItem('aivana_voice_session', JSON.stringify(sessionData));
+                setLastSavedAt(timeStr);
+            }, 500);
+        }
+
+        return () => {
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        };
+    }, [transcript, extracted, phase]);
 
     // ── timer ──────────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -208,6 +252,11 @@ export const VoiceDictationMode: React.FC<VoiceDictationModeProps> = ({
                         rows={5}
                         className="w-full bg-white border border-opd-border text-opd-text-primary text-xs rounded-xl p-3 focus:ring-1 focus:ring-opd-primary focus:border-opd-primary outline-none resize-none font-mono leading-relaxed shadow-sm"
                     />
+                    {lastSavedAt && (
+                        <div className="text-[9px] text-opd-text-secondary italic flex items-center gap-1.5">
+                            <span>✓ Last auto-saved at {lastSavedAt}</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex gap-3">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { lookupICD, assignICDViaModel, IcdCandidate, validateCode } from '../../services/icdService';
 import { logIcdAssignment } from '../../utils/auditLogger';
 import { captureCodingCorrection } from '../../engine/continuousLearningLoop';
+import { validateCodeAgainstLock } from '../../utils/chapterLockValidator';
 
 interface ICDPickerProps {
   caseId: string;
@@ -36,6 +37,7 @@ export const ICDPicker: React.FC<ICDPickerProps> = ({
   const [candidates, setCandidates] = useState<IcdCandidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<IcdCandidate | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  const [chapterLockWarning, setChapterLockWarning] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<{ code: string; desc: string; method: string } | null>(
     initialCode && validateCode(initialCode)
       ? { code: initialCode, desc: initialDescription, method: initialMatchMethod || 'manual' }
@@ -76,6 +78,9 @@ export const ICDPicker: React.FC<ICDPickerProps> = ({
 
   const handleSelect = (candidate: IcdCandidate) => {
     setSelectedCandidate(candidate);
+    // Check for chapter lock violations
+    const validation = validateCodeAgainstLock(candidate.code, diagnosisText);
+    setChapterLockWarning(validation.warning || null);
   };
 
   const handleConfirm = () => {
@@ -267,6 +272,15 @@ export const ICDPicker: React.FC<ICDPickerProps> = ({
                     {selectedCandidate.matchMethod.replace('_', ' ')}
                   </span>
                 </div>
+
+                {/* Chapter Lock Validation Warning */}
+                {chapterLockWarning && (
+                  <div className="pt-2 -mx-3.5 -mb-3.5 px-3.5 py-2.5 bg-red-50 border-t border-red-200 rounded-b-xl">
+                    <div className="text-[9px] text-red-800 leading-relaxed">
+                      {chapterLockWarning}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Similar Codes Suggestion */}

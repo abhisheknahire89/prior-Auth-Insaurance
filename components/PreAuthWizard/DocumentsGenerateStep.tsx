@@ -51,6 +51,7 @@ export const DocumentsGenerateStep: React.FC<DocGenerateStepProps> = ({
 }) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [finalCaseData, setFinalCaseData] = useState<Partial<PreAuthRecord>>(() => record);
+    const listenerMapRef = useRef<Map<HTMLInputElement | HTMLTextAreaElement, { input: EventListener; change: EventListener }>>(new Map());
 
     const initialHtmlContent = useMemo(() => {
         return generateFull9PagePreAuthHtml(record, { editable: true });
@@ -62,6 +63,13 @@ export const DocumentsGenerateStep: React.FC<DocGenerateStepProps> = ({
 
         const doc = iframe.contentDocument || iframe.contentWindow?.document;
         if (!doc) return;
+
+        // Clean up old listeners before setting up new ones
+        listenerMapRef.current.forEach((listeners, element) => {
+            element.removeEventListener('input', listeners.input);
+            element.removeEventListener('change', listeners.change);
+        });
+        listenerMapRef.current.clear();
 
         const inputs = doc.querySelectorAll('[data-field]');
         inputs.forEach(input => {
@@ -94,12 +102,14 @@ export const DocumentsGenerateStep: React.FC<DocGenerateStepProps> = ({
                 });
             };
 
-            // Remove existing listeners if any (to prevent multiple listener bindings)
-            el.removeEventListener('input', handleEvent);
-            el.removeEventListener('change', handleEvent);
+            // Store listener references for proper cleanup
+            const inputListener = handleEvent as EventListener;
+            const changeListener = handleEvent as EventListener;
 
-            el.addEventListener('input', handleEvent);
-            el.addEventListener('change', handleEvent);
+            el.addEventListener('input', inputListener);
+            el.addEventListener('change', changeListener);
+
+            listenerMapRef.current.set(el, { input: inputListener, change: changeListener });
         });
     }, []);
 
@@ -117,6 +127,12 @@ export const DocumentsGenerateStep: React.FC<DocGenerateStepProps> = ({
 
         return () => {
             iframe.removeEventListener('load', handleLoad);
+            // Clean up all stored event listeners on unmount
+            listenerMapRef.current.forEach((listeners, element) => {
+                element.removeEventListener('input', listeners.input);
+                element.removeEventListener('change', listeners.change);
+            });
+            listenerMapRef.current.clear();
         };
     }, [setupIframeListeners]);
 

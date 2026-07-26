@@ -9,6 +9,7 @@ import { splitPdfIntoPages, getPdfPageCount, renderPdfPageThumbnails, SplitPage 
 import { classifyGeminiError, geminiErrorUserMessage, GeminiErrorKind } from '../../utils/geminiErrorClassifier';
 import { useFieldValidation, fieldValidators } from '../../hooks/useFieldValidation';
 import { ValidatedInput } from '../ValidatedInput';
+import { Toast } from '../Toast';
 
 interface PatientInsuranceStepProps {
     patient: Partial<PatientRecord>;
@@ -142,6 +143,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
     const [searching, setSearching] = useState(false);
     const [policyDateWarning, setPolicyDateWarning] = useState('');
     const [extractionException, setExtractionException] = useState('');
+    const [toastError, setToastError] = useState<{ message: string; kind: GeminiErrorKind } | null>(null);
     const [extractionResult, setExtractionResult] = useState<{ filled: string[], pending: string[] } | null>(null);
     const [lastExtractedData, setLastExtractedData] = useState<ExtractedPatientData | null>(null);
     const [pageClassifications, setPageClassifications] = useState<any[] | null>(null);
@@ -575,13 +577,13 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                 return next;
             });
             const kind: GeminiErrorKind = error?.geminiErrorKind || classifyGeminiError(error);
+            const errorMsg = kind === 'unknown'
+                ? (error.message || "Failed to parse document. Please try a clearer image.")
+                : geminiErrorUserMessage(kind);
             log(`AI Extraction Failed: ${error?.message || 'Unknown error'}`);
             setExtractionFailedKind(kind);
-            setExtractionException(
-                kind === 'unknown'
-                    ? (error.message || "Failed to parse document. Please try a clearer image.")
-                    : geminiErrorUserMessage(kind)
-            );
+            setExtractionException(errorMsg);
+            setToastError({ message: errorMsg, kind });
         } finally {
              setIsExtracting(false);
         }
@@ -1318,6 +1320,23 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                 Continue to Clinical Details
             </button>
             {!isValid && <p className="text-[10px] text-amber-600 font-semibold text-center mt-1">Fill all required (*) fields to continue</p>}
+
+            {/* OCR Error Toast */}
+            {toastError && (
+                <Toast
+                    message={toastError.message}
+                    type="error"
+                    duration={8000}
+                    onClose={() => setToastError(null)}
+                    action={{
+                        label: 'Retry',
+                        onClick: () => {
+                            fileRef.current?.click();
+                            setToastError(null);
+                        }
+                    }}
+                />
+            )}
 
             {/* Thumbnail Preview Modal Overlay */}
             {previewPage && (
