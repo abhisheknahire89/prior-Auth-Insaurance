@@ -5,6 +5,7 @@ import { calculateTotals, formatCostDisplay } from '../../utils/costCalculator';
 import { todayISO, nowTimeString } from '../../utils/formatters';
 import { getConditionByCode, getConditionByName } from '../../config/icd10Database';
 import { calculateCost, findConditionByICD } from '../../services/costEstimationService';
+import { responsiveClasses } from '../../utils/responsiveClasses';
 
 interface AdmissionCostStepProps {
     admission: Partial<AdmissionDetails>;
@@ -263,7 +264,7 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
                         </label>
                     ))}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-4">
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Date of Admission *</label>
                         <input type="date" value={admission.dateOfAdmission ?? ''}
@@ -273,7 +274,7 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('admission.dateOfAdmission')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" />
+                            className="form-input min-h-[48px] md:min-h-auto" />
                         {renderAbsentWarning('admission.dateOfAdmission')}
                     </div>
                     <div>
@@ -285,7 +286,7 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('admission.timeOfAdmission')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" />
+                            className="form-input min-h-[48px] md:min-h-auto" />
                         {renderAbsentWarning('admission.timeOfAdmission')}
                     </div>
                 </div>
@@ -301,7 +302,7 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
                         ))}
                     </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-4">
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Ward Days</label>
                         <input type="number" value={admission.expectedDaysInRoom ?? ''}
@@ -312,7 +313,7 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('admission.expectedDaysOfStay')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" min={0} />
+                            className="form-input min-h-[48px] md:min-h-auto" min={0} />
                     </div>
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">ICU Days</label>
@@ -324,7 +325,7 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('admission.expectedDaysOfStay')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" min={0} />
+                            className="form-input min-h-[48px] md:min-h-auto" min={0} />
                     </div>
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Total Length of Stay</label>
@@ -410,7 +411,7 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
             {/* Past Medical History */}
             <div className="card-premium space-y-4">
                 <h3 className="font-semibold text-opd-primary text-[10px] uppercase tracking-wider border-b border-opd-border pb-2 font-lora">Past Medical History</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-3">
                     {PAST_CONDITIONS.map(([key, label]) => (
                         <div key={key} className="flex items-center gap-3 bg-white border border-opd-border hover:border-opd-primary rounded-lg px-4 py-2.5 text-xs text-opd-text-secondary transition-all select-none shadow-sm">
                             <input type="checkbox"
@@ -433,13 +434,13 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
                         <span className="font-semibold">Previously hospitalized?</span>
                     </label>
                     {admission.previousHospitalization?.wasHospitalizedBefore && (
-                        <div className="grid grid-cols-2 gap-4 mt-3 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 animate-fade-in">
                             <input value={admission.previousHospitalization?.details ?? ''} placeholder="Hospital/Diagnosis details..."
                                 onChange={e => updateField({ previousHospitalization: { ...admission.previousHospitalization as any, details: e.target.value } })}
-                                className="form-input" />
+                                className="form-input min-h-[48px] md:min-h-auto" />
                             <input type="date" value={admission.previousHospitalization?.dateOfLastHospitalization ?? ''}
                                 onChange={e => updateField({ previousHospitalization: { ...admission.previousHospitalization as any, dateOfLastHospitalization: e.target.value } })}
-                                className="form-input" />
+                                className="form-input min-h-[48px] md:min-h-auto" />
                         </div>
                     )}
                 </div>

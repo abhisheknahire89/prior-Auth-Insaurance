@@ -2,6 +2,7 @@ import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react'
 import { PreAuthRecord } from '../PreAuthWizard/types';
 import { generateFull9PagePreAuthHtml } from '../../services/preAuthGenerator';
 import { DocumentNavigation } from '../DocumentNavigation';
+import { responsiveClasses } from '../../utils/responsiveClasses';
 
 interface DocGenerateStepProps {
     record: Partial<PreAuthRecord>;

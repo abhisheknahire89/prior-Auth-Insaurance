@@ -11,6 +11,7 @@ import { useFieldValidation, fieldValidators } from '../../hooks/useFieldValidat
 import { ValidatedInput } from '../ValidatedInput';
 import { Toast } from '../Toast';
 import { ExtractionPreviewModal } from './ExtractionPreviewModal';
+import { responsiveClasses } from '../../utils/responsiveClasses';
 
 interface PatientInsuranceStepProps {
     patient: Partial<PatientRecord>;
@@ -618,7 +619,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                             onChange={e => onClinicalChange && onClinicalChange({ ...clinical, additionalClinicalNotes: e.target.value })}
                             placeholder="Add the patient's clinical notes, presenting complaints, history, diagnosis, investigations, treatment plan, etc."
                             rows={7}
-                            className="w-full form-input pr-20 text-xs font-mono leading-relaxed resize-y overflow-y-auto"
+                            className="w-full form-input pr-20 text-xs font-mono leading-relaxed resize-y overflow-y-auto min-h-[200px] md:min-h-[180px]"
                         />
                         <div className="absolute right-3 bottom-3 flex items-center gap-1.5">
                             <button
@@ -730,7 +731,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
     if (entryPath === 'search_existing') {
         return (
             <div className="space-y-6 text-opd-text-primary bg-white p-6 rounded-2xl border border-opd-border shadow-sm">
-                <button onClick={handleResetEntryPath} className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5" type="button">
+                <button onClick={handleResetEntryPath} className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5 min-h-[48px] md:min-h-auto" type="button">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                     </svg>
@@ -799,7 +800,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
     if (entryPath === 'scan_card' && !ocrDone) {
         return (
             <div className="space-y-6 bg-white p-6 rounded-2xl border border-opd-border shadow-sm text-opd-text-primary">
-                <button onClick={handleResetEntryPath} className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5">
+                <button onClick={handleResetEntryPath} className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5 min-h-[48px] md:min-h-auto">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                     </svg>
@@ -838,7 +839,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                           <p className="font-bold text-xs text-red-700 uppercase tracking-wider font-lora">AI Extraction Failed</p>
                           <p className="text-[11px] text-red-800 mt-0.5">{extractionException}</p>
                         </div>
-                        <button onClick={() => fileRef.current?.click()} className="btn-secondary px-3 py-1.5 text-xs shrink-0" type="button">
+                        <button onClick={() => fileRef.current?.click()} className="btn-secondary px-3 py-1.5 text-xs shrink-0 min-h-[48px] md:min-h-auto" type="button">
                           Try Again
                         </button>
                       </div>
@@ -1042,7 +1043,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
             {/* Patient Demographics */}
             <div className="card-premium space-y-4">
                 <h3 className="font-semibold text-opd-primary text-[10px] uppercase tracking-wider border-b border-opd-border pb-2 font-lora">Patient Demographics</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-4">
                     <div className="col-span-2">
                         <ValidatedInput
                             label="Full Name"
@@ -1070,7 +1071,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('patient.dateOfBirth')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" />
+                            className="form-input min-h-[48px] md:min-h-auto" />
                         {renderAbsentWarning('patient.dateOfBirth')}
                     </div>
                     <div>
@@ -1101,7 +1102,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('patient.gender')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input">
+                            className="form-input min-h-[48px] md:min-h-auto">
                             <option value="">Select</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
@@ -1112,7 +1113,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Marital Status</label>
                         <select value={patient.maritalStatus ?? ''} onChange={e => onPatientChange({ ...patient, maritalStatus: e.target.value as any })}
-                            className="form-input">
+                            className="form-input min-h-[48px] md:min-h-auto">
                             <option value="">Select</option>
                             <option>Single</option><option>Married</option><option>Widowed</option><option>Divorced</option>
                         </select>
@@ -1139,7 +1140,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Email</label>
                         <input type="email" value={patient.email ?? ''} onChange={e => onPatientChange({ ...patient, email: e.target.value })}
-                            className="form-input" placeholder="optional" />
+                            className="form-input min-h-[48px] md:min-h-auto" placeholder="optional" />
                     </div>
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">City *</label>
@@ -1150,7 +1151,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('patient.city')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" />
+                            className="form-input min-h-[48px] md:min-h-auto" />
                         {renderAbsentWarning('patient.city')}
                     </div>
                     <div>
@@ -1162,16 +1163,16 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('patient.state')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input">
+                            className="form-input min-h-[48px] md:min-h-auto">
                             <option value="">Select State</option>
                             {INDIAN_STATES.map(s => <option key={s}>{s}</option>)}
                         </select>
                         {renderAbsentWarning('patient.state')}
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1 md:col-span-2">
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">UHID (Hospital ID)</label>
                         <input value={patient.uhid ?? ''} onChange={e => onPatientChange({ ...patient, uhid: e.target.value })}
-                            className="form-input" placeholder="Optional identifier" />
+                            className="form-input min-h-[48px] md:min-h-auto" placeholder="Optional identifier" />
                     </div>
                 </div>
             </div>
@@ -1179,7 +1180,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
             {/* Insurance Details */}
             <div className="card-premium space-y-4">
                 <h3 className="font-semibold text-opd-primary text-[10px] uppercase tracking-wider border-b border-opd-border pb-2 font-lora">Insurance & Policy Details</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-4">
                     <div>
                         <ValidatedInput
                             label="Insurance Company"
@@ -1219,7 +1220,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                                     setFocusedField(null);
                                     fieldValidation.markTouched('tpaName');
                                 }}
-                                className={`w-full px-3 py-2 border rounded-lg transition-colors form-input ${
+                                className={`w-full px-3 py-2 min-h-[48px] md:min-h-auto border rounded-lg transition-colors form-input ${
                                     fieldValidation.getFieldState('tpaName').touched
                                         ? fieldValidation.getFieldState('tpaName').isValid
                                             ? 'border-green-500 bg-green-50'
@@ -1269,13 +1270,13 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('insurance.tpaIdCardNumber')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" />
+                            className="form-input min-h-[48px] md:min-h-auto" />
                         {renderAbsentWarning('insurance.tpaIdCardNumber')}
                     </div>
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Policy Type</label>
                         <select value={insurance.policyType ?? 'Individual'} onChange={e => onInsuranceChange({ ...insurance, policyType: e.target.value as any })}
-                            className="form-input">
+                            className="form-input min-h-[48px] md:min-h-auto">
                             <option>Individual</option><option>Floater</option><option>Corporate</option><option>Group</option>
                         </select>
                     </div>
@@ -1288,13 +1289,13 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('insurance.sumInsured')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" placeholder="e.g. 500000" />
+                            className="form-input min-h-[48px] md:min-h-auto" placeholder="e.g. 500000" />
                         {renderAbsentWarning('insurance.sumInsured')}
                     </div>
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Policy Start Date</label>
                         <input type="date" value={insurance.policyStartDate ?? ''} onChange={e => onInsuranceChange({ ...insurance, policyStartDate: e.target.value })}
-                            className="form-input" />
+                            className="form-input min-h-[48px] md:min-h-auto" />
                     </div>
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Policy End Date</label>
@@ -1305,19 +1306,19 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('insurance.policyEndDate')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" />
+                            className="form-input min-h-[48px] md:min-h-auto" />
                         {renderAbsentWarning('insurance.policyEndDate')}
                         {policyDateWarning && <p className="text-opd-error text-[11px] font-semibold mt-1.5">{policyDateWarning}</p>}
                     </div>
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Proposer Name</label>
                         <input value={insurance.proposerName ?? ''} onChange={e => onInsuranceChange({ ...insurance, proposerName: e.target.value })}
-                            className="form-input" placeholder="Defaults to patient name" />
+                            className="form-input min-h-[48px] md:min-h-auto" placeholder="Defaults to patient name" />
                     </div>
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Relationship with Proposer</label>
                         <select value={insurance.relationshipWithProposer ?? 'Self'} onChange={e => onInsuranceChange({ ...insurance, relationshipWithProposer: e.target.value })}
-                            className="form-input">
+                            className="form-input min-h-[48px] md:min-h-auto">
                             <option>Self</option><option>Spouse</option><option>Son</option><option>Daughter</option><option>Father</option><option>Mother</option><option>Other</option>
                         </select>
                     </div>
@@ -1325,7 +1326,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
             </div>
 
             <button onClick={onNext} disabled={!isValid} type="button"
-                className="w-full btn-primary py-2.5">
+                className="w-full btn-primary py-2.5 min-h-[48px] md:min-h-auto">
                 Continue to Clinical Details
             </button>
             {!isValid && <p className="text-[10px] text-amber-600 font-semibold text-center mt-1">Fill all required (*) fields to continue</p>}

@@ -44,7 +44,7 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
           disabled={disabled}
-          className={`w-full px-3 py-2 border rounded-lg transition-colors ${
+          className={`w-full px-3 md:px-3 py-2.5 md:py-2 border rounded-lg transition-colors min-h-[48px] md:min-h-auto text-sm md:text-xs ${
             showValidation
               ? isValid
                 ? 'border-green-500 bg-green-50 text-green-900'

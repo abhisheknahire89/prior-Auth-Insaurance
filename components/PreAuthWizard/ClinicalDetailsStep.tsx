@@ -5,6 +5,7 @@ import { ICDPicker } from './ICDPicker';
 import { EvidenceChecklist } from '../EvidenceChecklist';
 import { performNoteDocumentComparison, NoteComparisonItem, NoteComparisonReport } from '../../services/noteDocumentComparison';
 import { resolveDiagnosisToIcd, getCachedNormalization } from '../../services/icdService';
+import { responsiveClasses } from '../../utils/responsiveClasses';
 
 if (typeof window !== 'undefined') {
     (window as any).resolveDiagnosisToIcd = resolveDiagnosisToIcd;
@@ -230,7 +231,7 @@ export const ClinicalDetailsStep: React.FC<ClinicalDetailsStepProps> = ({
     }
 
     return (
-        <div className="flex gap-5 text-opd-text-primary">
+        <div className="flex gap-4 md:gap-5 text-opd-text-primary">
             {/* Main Content */}
             <div className="flex-1 space-y-5">
                 <div className="flex items-center justify-between">
@@ -251,11 +252,11 @@ export const ClinicalDetailsStep: React.FC<ClinicalDetailsStepProps> = ({
                         onFocus={() => setFocusedField('clinical.chiefComplaints')}
                         onBlur={() => setFocusedField(null)}
                         rows={4}
-                        className="form-input"
+                        className="form-input min-h-[120px] md:min-h-auto"
                         placeholder="Fever, cough, breathlessness..." />
                     {renderAbsentWarning('clinical.chiefComplaints')}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-4">
                     <div>
                         <label className="form-label uppercase tracking-wider text-[9px] mb-1">Duration of Ailment *</label>
                         <input value={c.durationOfPresentAilment ?? ''}
@@ -265,7 +266,7 @@ export const ClinicalDetailsStep: React.FC<ClinicalDetailsStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('clinical.durationOfPresentAilment')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input" placeholder="e.g. 5 days" />
+                            className="form-input min-h-[48px] md:min-h-auto" placeholder="e.g. 5 days" />
                         {renderAbsentWarning('clinical.durationOfPresentAilment')}
                     </div>
                     <div>
@@ -277,7 +278,7 @@ export const ClinicalDetailsStep: React.FC<ClinicalDetailsStepProps> = ({
                             }}
                             onFocus={() => setFocusedField('clinical.natureOfIllness')}
                             onBlur={() => setFocusedField(null)}
-                            className="form-input">
+                            className="form-input min-h-[48px] md:min-h-auto">
                             <option value="">Select</option>
                             <option>Acute</option><option>Chronic</option><option>Acute on Chronic</option>
                         </select>
@@ -743,16 +744,16 @@ export const ClinicalDetailsStep: React.FC<ClinicalDetailsStepProps> = ({
                 </div>
             </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                    <button onClick={onBack} className="btn-secondary py-2" type="button">
-                        ← Back
-                    </button>
-                    <button onClick={onNext} disabled={!isValid} type="button"
-                        className="btn-primary py-2">
-                        Continue to Admission & Cost
-                    </button>
-                </div>
-                {!isValid && <p className="text-[10px] text-amber-600 font-semibold text-center mt-1">Add diagnosis (with confirmed ICD-10 code), treatment line, and OPD justification to continue</p>}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+                <button onClick={onBack} className="btn-secondary py-2" type="button">
+                    ← Back
+                </button>
+                <button onClick={onNext} disabled={!isValid} type="button"
+                    className="btn-primary py-2">
+                    Continue to Admission & Cost
+                </button>
+            </div>
+            {!isValid && <p className="text-[10px] text-amber-600 font-semibold text-center mt-1">Add diagnosis (with confirmed ICD-10 code), treatment line, and OPD justification to continue</p>}
             </div>
 
             {/* Right Sidebar - Evidence Checklist (hidden on mobile) */}

@@ -53,11 +53,11 @@ export const Toast: React.FC<ToastProps> = ({
   }[type];
 
   return (
-    <div className={`fixed bottom-6 left-6 z-50 max-w-sm animate-fade-in ${bgColor} border rounded-lg p-4 shadow-lg`}>
+    <div className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-auto z-50 md:max-w-sm animate-fade-in ${bgColor} border rounded-lg p-4 shadow-lg min-h-[48px] md:min-h-auto`}>
       <div className="flex items-start gap-3">
         <span className={`text-lg shrink-0 ${textColor}`}>{icon}</span>
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-semibold ${textColor}`}>{message}</p>
+          <p className={`text-sm md:text-sm font-semibold ${textColor}`}>{message}</p>
         </div>
         {action && (
           <button
