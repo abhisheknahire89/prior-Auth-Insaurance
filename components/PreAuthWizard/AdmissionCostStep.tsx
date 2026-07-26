@@ -230,6 +230,12 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
     const deductionPercentage = roomRentExceeded ? (actualRoomRent - maxRoomRent) / actualRoomRent : 0;
     const [showDeductionDetail, setShowDeductionDetail] = useState(false);
 
+    // Cost narrative calculation
+    const roomType = admission.roomCategory || 'General Ward';
+    const policyLimitDisplay = formatCostDisplay(sumInsured);
+    const estimateDisplay = formatCostDisplay(totals.totalEstimatedCost);
+    const narrativeInfo = `Based on ${los}-day ${isICU ? 'ICU' : 'ward'} stay in ${roomType}, with daily charges of ₹${formatCostDisplay(cost.roomRentPerDay ?? 0)} room rent. Policy sum insured is ${policyLimitDisplay}.`;
+
     return (
         <div className="space-y-5 text-opd-text-primary">
             <h2 className="text-base font-bold font-lora text-opd-primary uppercase tracking-wider">Admission & Cost Estimation</h2>
@@ -527,6 +533,72 @@ export const AdmissionCostStep: React.FC<AdmissionCostStepProps> = ({
                         </table>
                     </div>
                 )}
+
+                {/* Cost Calculator Narrative */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-lg shrink-0">📊</span>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-sm text-blue-900">Cost Estimate Breakdown</h3>
+                      <p className="text-xs text-blue-800 mt-1.5 leading-relaxed">{narrativeInfo}</p>
+                    </div>
+                  </div>
+
+                  {/* Cost Comparison Box */}
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="bg-white rounded p-3 border border-blue-100">
+                      <p className="text-[9px] text-blue-700 font-semibold uppercase">Policy Limit</p>
+                      <p className="text-lg font-bold text-blue-900 font-mono mt-1">{policyLimitDisplay}</p>
+                    </div>
+                    <div className={`bg-white rounded p-3 border ${totals.exceedsSumInsured ? 'border-red-200' : 'border-green-200'}`}>
+                      <p className="text-[9px] font-semibold uppercase" style={{color: totals.exceedsSumInsured ? '#b91c1c' : '#15803d'}}>
+                        {totals.exceedsSumInsured ? 'Over Limit' : 'Within Limit'}
+                      </p>
+                      <p className="text-lg font-bold font-mono mt-1" style={{color: totals.exceedsSumInsured ? '#b91c1c' : '#15803d'}}>
+                        {estimateDisplay}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Itemized Breakdown Table */}
+                  <div className="mt-3 pt-3 border-t border-blue-200">
+                    <p className="text-[9px] font-semibold text-blue-900 uppercase mb-2">Cost Itemization</p>
+                    <div className="space-y-1.5 text-[9px]">
+                      <div className="flex justify-between p-1.5 bg-white rounded border border-blue-100">
+                        <span className="text-blue-800">Room Rent ({los} days × ₹{cost.roomRentPerDay ?? 0})</span>
+                        <span className="font-mono font-bold text-blue-900">₹{formatCostDisplay((cost.roomRentPerDay ?? 0) * los)}</span>
+                      </div>
+                      {(cost.investigationsEstimate ?? 0) > 0 && (
+                        <div className="flex justify-between p-1.5 bg-white rounded border border-blue-100">
+                          <span className="text-blue-800">Investigations</span>
+                          <span className="font-mono font-bold text-blue-900">₹{formatCostDisplay(cost.investigationsEstimate ?? 0)}</span>
+                        </div>
+                      )}
+                      {(cost.medicinesEstimate ?? 0) > 0 && (
+                        <div className="flex justify-between p-1.5 bg-white rounded border border-blue-100">
+                          <span className="text-blue-800">Medicines</span>
+                          <span className="font-mono font-bold text-blue-900">₹{formatCostDisplay(cost.medicinesEstimate ?? 0)}</span>
+                        </div>
+                      )}
+                      {(cost.consumablesEstimate ?? 0) > 0 && (
+                        <div className="flex justify-between p-1.5 bg-white rounded border border-blue-100">
+                          <span className="text-blue-800">Consumables</span>
+                          <span className="font-mono font-bold text-blue-900">₹{formatCostDisplay(cost.consumablesEstimate ?? 0)}</span>
+                        </div>
+                      )}
+                      {(cost.totalImplantsCost ?? 0) > 0 && (
+                        <div className="flex justify-between p-1.5 bg-white rounded border border-blue-100">
+                          <span className="text-blue-800">Implants</span>
+                          <span className="font-mono font-bold text-blue-900">₹{formatCostDisplay(cost.totalImplantsCost ?? 0)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between p-1.5 bg-blue-100 rounded border-2 border-blue-300 font-bold">
+                        <span className="text-blue-900">Total Estimated</span>
+                        <span className="font-mono text-blue-900">{estimateDisplay}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Proportional Deduction Breakdown */}
                 {roomRentExceeded && (
