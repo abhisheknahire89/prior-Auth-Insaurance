@@ -1,6 +1,7 @@
 import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 import { PreAuthRecord } from '../PreAuthWizard/types';
 import { generateFull9PagePreAuthHtml } from '../../services/preAuthGenerator';
+import { DocumentNavigation } from '../DocumentNavigation';
 
 interface DocGenerateStepProps {
     record: Partial<PreAuthRecord>;
@@ -51,6 +52,7 @@ export const DocumentsGenerateStep: React.FC<DocGenerateStepProps> = ({
 }) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [finalCaseData, setFinalCaseData] = useState<Partial<PreAuthRecord>>(() => record);
+    const [currentPage, setCurrentPage] = useState(1);
     const listenerMapRef = useRef<Map<HTMLInputElement | HTMLTextAreaElement, { input: EventListener; change: EventListener }>>(new Map());
 
     const initialHtmlContent = useMemo(() => {
