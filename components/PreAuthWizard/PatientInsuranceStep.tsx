@@ -10,6 +10,7 @@ import { classifyGeminiError, geminiErrorUserMessage, GeminiErrorKind } from '..
 import { useFieldValidation, fieldValidators } from '../../hooks/useFieldValidation';
 import { ValidatedInput } from '../ValidatedInput';
 import { Toast } from '../Toast';
+import { ExtractionPreviewModal } from './ExtractionPreviewModal';
 
 interface PatientInsuranceStepProps {
     patient: Partial<PatientRecord>;
@@ -145,6 +146,9 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
     const [extractionException, setExtractionException] = useState('');
     const [toastError, setToastError] = useState<{ message: string; kind: GeminiErrorKind } | null>(null);
     const [extractionResult, setExtractionResult] = useState<{ filled: string[], pending: string[] } | null>(null);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [previewModalData, setPreviewModalData] = useState<{ extracted: ExtractedPatientData; confidence: number; documentName: string } | null>(null);
+    const [ocrProgress, setOcrProgress] = useState(0);
     const [lastExtractedData, setLastExtractedData] = useState<ExtractedPatientData | null>(null);
     const [pageClassifications, setPageClassifications] = useState<any[] | null>(null);
 
@@ -421,6 +425,16 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
             // the same onProgress hook Screen 3 uses — not a simulated timer.
             const extracted = await extractFromDocument(file, pages, (stage, detail, pageIndex, pageStatus) => {
                 setExtractionStage(stage);
+
+                // Update progress percentage based on stage
+                const stageProgress = {
+                    'ocr': 25,
+                    'classifying': 50,
+                    'extracting': 75,
+                    'completed': 100
+                };
+                setOcrProgress(stageProgress[stage as keyof typeof stageProgress] || 0);
+
                 if (detail) {
                     log(detail);
                 } else {
@@ -446,7 +460,7 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
             log(`Confidence: ${Math.round((extracted.confidence > 1 ? extracted.confidence / 100 : extracted.confidence) * 100)}%`);
 
             const normalizedConf = extracted.confidence > 1 ? extracted.confidence / 100 : extracted.confidence;
-            
+
             // Only block if truly unreadable: very low confidence AND no useful data at all.
             const hasAnyUsefulData = extracted.patient?.name || extracted.patient?.age ||
                 extracted.insurance?.policy_number || extracted.clinical_excerpts?.length;
@@ -456,98 +470,14 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                  return;
             }
 
-            if (normalizedConf < 0.7) {
-                 setExtractionException(`AI extraction confidence is ${Math.round(normalizedConf * 100)}%. Extracted fields have been filled below for your verification. Please check for accuracy.`);
-            }
-            
-            const dob = extracted.patient?.dob || patient.dateOfBirth;
-            // Map according to requested mapping
-            const updatedPatient = {
-                ...patient,
-                patientName: extracted.patient?.name || patient.patientName,
-                dateOfBirth: dob,
-                age: extracted.patient?.age || (dob ? calculateAge(dob) : patient.age),
-                ageUnit: extracted.patient?.ageUnit || 'years',
-                gender: (extracted.patient?.gender as any) || patient.gender,
-                mobileNumber: extracted.patient?.phone || patient.mobileNumber,
-                city: patient.city,
-                state: patient.state
-            };
-
-            const endDate = extracted.insurance?.valid_till || insurance.policyEndDate;
-            const updatedInsurance = {
-                ...insurance,
-                insurerName: extracted.insurance?.insurance_company || insurance.insurerName,
-                tpaName: extracted.insurance?.tpa_name || insurance.tpaName,
-                policyNumber: extracted.insurance?.policy_number || insurance.policyNumber,
-                sumInsured: extracted.insurance?.sum_insured || insurance.sumInsured,
-                policyEndDate: endDate,
-                dataSource: 'ocr',
-                ocrConfidence: Math.round(normalizedConf * 100)
-            };
-            if (endDate) handlePolicyEndDate(endDate);
-
-            // Add the document to PreAuthRecord's uploadedDocuments
-            const documentId = Math.random().toString(36).substring(7);
-            const docPages = pages.map(p => ({
-                index: p.index,
-                base64Data: p.base64Data,
-                ocrText: (extracted as any).ocrPages?.[p.index] || ''
-            }));
-            const newDoc: WizardDocument = {
-                id: documentId,
-                fileName: file.name,
-                fileSizeDisplay: (file.size / 1024).toFixed(1) + ' KB',
-                fileType: file.type.includes('pdf') ? 'pdf' : 'image',
-                mimeType: file.type,
-                uploadedAt: new Date().toISOString(),
-                base64Data: pages[0]?.base64Data || '',
-                documentCategory: extracted.document_type as any || 'other',
-                autoClassified: true,
-                isRequired: false,
-                pageCount: pages.length,
-                pages: docPages
-            };
-            const updatedDocuments = [...uploadedDocuments, newDoc];
-
-            // Strategy B: Merge pre-existing user clinical note with OCR-extracted clinical excerpts
-            const userNote = (clinical.additionalClinicalNotes || '').trim();
-            const ocrNote = (extracted.clinical_excerpts || []).join('\n').trim();
-            let mergedNotes = userNote;
-            if (ocrNote) {
-                if (userNote) {
-                    if (!userNote.includes('[Extracted from Uploaded Document]')) {
-                        mergedNotes = `${userNote}\n\n---\n[Extracted from Uploaded Document]\n${ocrNote}`;
-                    }
-                } else {
-                    mergedNotes = ocrNote;
-                }
-            }
-            const isHighConfidence = normalizedConf >= 0.70;
-            const updatedClinical: Partial<ClinicalDetails> = {
-                ...clinical,
-                additionalClinicalNotes: mergedNotes,
-                diagnoses: isHighConfidence ? (extracted.diagnoses || []) : [],
-                suggestedDiagnoses: !isHighConfidence ? (extracted.diagnoses || []).map((d: any) => d.originalDiagnosis || d.diagnosis) : []
-            };
-
-            // Single bundled update — see onExtractionComplete's doc comment for why this
-            // replaced three separate onPatientChange/onInsuranceChange/onDocumentsChange calls.
-            if (onExtractionComplete) {
-                onExtractionComplete(updatedPatient, updatedInsurance, updatedDocuments, updatedClinical, extracted);
-            } else {
-                onPatientChange(updatedPatient);
-                onInsuranceChange(updatedInsurance);
-                if (onClinicalChange) onClinicalChange(updatedClinical);
-                if (onDocumentsChange) onDocumentsChange(updatedDocuments);
-            }
-
-            setExtractionResult({
-                filled: extracted.extracted_fields,
-                pending: extracted.missing_fields
+            // Show preview modal for user to confirm/edit extracted fields
+            setPreviewModalData({
+                extracted,
+                confidence: normalizedConf,
+                documentName: file.name
             });
-            setLastExtractedData(extracted);
-            setPageClassifications(extracted.page_classifications || null);
+            setShowPreviewModal(true);
+            setOcrProgress(100);
 
             // Mark all non-failed pages as Completed
             setPageStates(prev => {
@@ -560,10 +490,6 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                 });
                 return next;
             });
-
-            setOcrDone(true);
-            if (onOcrDoneChange) onOcrDoneChange(true);
-            setEntryPath('manual');
         } catch (error: any) {
             // Mark all non-completed pages as Failed
             setPageStates(prev => {
@@ -593,6 +519,80 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
         setEntryPath(null);
         setOcrDone(false);
         if (onOcrDoneChange) onOcrDoneChange(false);
+    };
+
+    const handleExtractionConfirm = (updatedPatient: Partial<PatientRecord>, updatedInsurance: Partial<InsurancePolicyDetails>) => {
+        if (!previewModalData) return;
+
+        const extracted = previewModalData.extracted;
+        const normalizedConf = previewModalData.confidence;
+
+        // Add the document to PreAuthRecord's uploadedDocuments
+        const documentId = Math.random().toString(36).substring(7);
+        const docPages = (splitPages || []).map(p => ({
+            index: p.index,
+            base64Data: p.base64Data,
+            ocrText: (extracted as any).ocrPages?.[p.index] || ''
+        }));
+        const newDoc: WizardDocument = {
+            id: documentId,
+            fileName: previewModalData.documentName,
+            fileSizeDisplay: ((previewModalData.documentName.length * 1000) / 1024).toFixed(1) + ' KB', // Placeholder
+            fileType: previewModalData.documentName.endsWith('.pdf') ? 'pdf' : 'image',
+            mimeType: previewModalData.documentName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+            uploadedAt: new Date().toISOString(),
+            base64Data: splitPages[0]?.base64Data || '',
+            documentCategory: extracted.document_type as any || 'other',
+            autoClassified: true,
+            isRequired: false,
+            pageCount: splitPages.length,
+            pages: docPages
+        };
+        const updatedDocuments = [...uploadedDocuments, newDoc];
+
+        // Merge pre-existing user clinical note with OCR-extracted clinical excerpts
+        const userNote = (clinical.additionalClinicalNotes || '').trim();
+        const ocrNote = (extracted.clinical_excerpts || []).join('\n').trim();
+        let mergedNotes = userNote;
+        if (ocrNote) {
+            if (userNote) {
+                if (!userNote.includes('[Extracted from Uploaded Document]')) {
+                    mergedNotes = `${userNote}\n\n---\n[Extracted from Uploaded Document]\n${ocrNote}`;
+                }
+            } else {
+                mergedNotes = ocrNote;
+            }
+        }
+        const isHighConfidence = normalizedConf >= 0.70;
+        const updatedClinical: Partial<ClinicalDetails> = {
+            ...clinical,
+            additionalClinicalNotes: mergedNotes,
+            diagnoses: isHighConfidence ? (extracted.diagnoses || []) : [],
+            suggestedDiagnoses: !isHighConfidence ? (extracted.diagnoses || []).map((d: any) => d.originalDiagnosis || d.diagnosis) : []
+        };
+
+        // Single bundled update
+        if (onExtractionComplete) {
+            onExtractionComplete(updatedPatient, updatedInsurance, updatedDocuments, updatedClinical, extracted);
+        } else {
+            onPatientChange(updatedPatient);
+            onInsuranceChange(updatedInsurance);
+            if (onClinicalChange) onClinicalChange(updatedClinical);
+            if (onDocumentsChange) onDocumentsChange(updatedDocuments);
+        }
+
+        setExtractionResult({
+            filled: extracted.extracted_fields,
+            pending: extracted.missing_fields
+        });
+        setLastExtractedData(extracted);
+        setPageClassifications(extracted.page_classifications || null);
+        setShowPreviewModal(false);
+        setPreviewModalData(null);
+        setOcrDone(true);
+        if (onOcrDoneChange) onOcrDoneChange(true);
+        setEntryPath('manual');
+        setIsExtracting(false);
     };
 
     const isValid = !!(
@@ -810,16 +810,25 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                 {(isExtractingState || extractionFailedKind) ? (
                   <div className="space-y-4">
                     {isExtractingState ? (
-                      <div className="flex items-center gap-3.5 p-5 bg-primary-tint/30 rounded-2xl border border-opd-primary/20">
-                        <div className="w-5 h-5 border-2 border-opd-primary border-t-transparent rounded-full animate-spin"></div>
-                        <div>
-                          <p className="font-bold text-xs text-opd-primary uppercase tracking-wider font-lora">Scanning & Classifying Document...</p>
-                          <p className="text-[11px] text-opd-text-secondary mt-0.5">Current Stage: <span className="font-semibold text-opd-primary">{
-                            extractionStage === 'reading' ? 'Reading File' :
-                            extractionStage === 'ocr' ? 'OCR Running' :
-                            extractionStage === 'classifying' ? 'Classifying Documents' :
-                            extractionStage === 'extracting' ? 'Extracting Patient Information' : 'Processing'
-                          }</span></p>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3.5 p-5 bg-primary-tint/30 rounded-2xl border border-opd-primary/20">
+                          <div className="w-5 h-5 border-2 border-opd-primary border-t-transparent rounded-full animate-spin"></div>
+                          <div className="flex-1">
+                            <p className="font-bold text-xs text-opd-primary uppercase tracking-wider font-lora">Extracting... {ocrProgress}%</p>
+                            <p className="text-[11px] text-opd-text-secondary mt-0.5">Stage: <span className="font-semibold text-opd-primary">{
+                              extractionStage === 'reading' ? 'Reading File' :
+                              extractionStage === 'ocr' ? 'OCR Running' :
+                              extractionStage === 'classifying' ? 'Classifying Documents' :
+                              extractionStage === 'extracting' ? 'Extracting Patient Information' : 'Processing'
+                            }</span></p>
+                          </div>
+                        </div>
+                        {/* Progress Bar */}
+                        <div className="w-full bg-opd-border rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-opd-primary to-emerald-500 h-full rounded-full transition-all duration-300"
+                            style={{ width: `${ocrProgress}%` }}
+                          />
                         </div>
                       </div>
                     ) : (
@@ -1337,6 +1346,20 @@ export const PatientInsuranceStep: React.FC<PatientInsuranceStepProps> = ({
                     }}
                 />
             )}
+
+            {/* Extraction Preview Modal */}
+            <ExtractionPreviewModal
+                isOpen={showPreviewModal}
+                extractedData={previewModalData?.extracted || null}
+                confidence={previewModalData?.confidence || 0}
+                documentName={previewModalData?.documentName || 'Document'}
+                onConfirm={handleExtractionConfirm}
+                onCancel={() => {
+                    setShowPreviewModal(false);
+                    setPreviewModalData(null);
+                    setIsExtracting(false);
+                }}
+            />
 
             {/* Thumbnail Preview Modal Overlay */}
             {previewPage && (
