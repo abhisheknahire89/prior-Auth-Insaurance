@@ -11,6 +11,8 @@ import {
 import { generateMedicalNecessityStatement, createPreAuthSubmission, formatPreAuthForTPA, generateIRDAIPreAuthForm, generateOPDJustification } from '../services/insuranceService';
 import { extractFromDocument } from '../services/documentExtractionService';
 import { classifyDocument, CLASSIFICATION_CONFIDENCE_THRESHOLD } from '../services/documentClassificationService';
+import { metricsService } from '../services/metricsService';
+import { claimReadinessEngine } from '../services/claimReadinessEngine';
 import { InsuranceStepReview } from './InsuranceStepReview';
 import { InsuranceStepDocuments } from './InsuranceStepDocuments';
 import { InsuranceStepConfirm } from './InsuranceStepConfirm';
@@ -48,6 +50,8 @@ export const InsurancePreAuthModal: React.FC<InsurancePreAuthModalProps> = ({
     const [doctorConfirmed, setDoctorConfirmed] = useState(false);
     const [generatingStatement, setGeneratingStatement] = useState(false);
     const [selectedDxIndex, setSelectedDxIndex] = useState(0);
+    const [caseId] = useState(`PA-AIVANA-${Date.now()}`);
+    const [workflowStartTime] = useState(Date.now());
 
     const [formData, setFormData] = useState<Partial<IRDAIPreAuthForm>>({
         metadata: {
@@ -192,6 +196,32 @@ export const InsurancePreAuthModal: React.FC<InsurancePreAuthModalProps> = ({
 
     const updateFormData = (updates: Partial<IRDAIPreAuthForm>) => {
         setFormData(prev => ({ ...prev, ...updates }));
+
+        // Track automation and field changes
+        if (updates.section3_PatientDetails) {
+            const patientData = updates.section3_PatientDetails;
+            if (patientData.patientName) {
+                metricsService.trackAutomationField('patientName', 'manual', patientData.patientName);
+            }
+            if (patientData.age) {
+                metricsService.trackAutomationField('age', 'manual', patientData.age);
+            }
+        }
+        if (updates.section4_ClinicalDetails) {
+            const clinicalData = updates.section4_ClinicalDetails;
+            if (clinicalData.chiefComplaints) {
+                metricsService.trackAutomationField('chiefComplaints', 'manual', clinicalData.chiefComplaints);
+            }
+            if (clinicalData.provisionalDiagnosis) {
+                metricsService.trackAutomationField('diagnosis', 'manual', clinicalData.provisionalDiagnosis);
+            }
+        }
+        if (updates.section6_CostEstimate) {
+            const costData = updates.section6_CostEstimate;
+            if (costData.roomRentPerDay) {
+                metricsService.trackAutomationField('roomRent', 'manual', costData.roomRentPerDay);
+            }
+        }
     };
 
     const handleDiagnosisSelect = (index: number) => {
@@ -207,6 +237,21 @@ export const InsurancePreAuthModal: React.FC<InsurancePreAuthModalProps> = ({
             });
         }
     };
+
+    // Initialize metrics tracking on component mount
+    useEffect(() => {
+        if (isOpen) {
+            metricsService.initializeCase(caseId);
+            metricsService.markStepStart('Step1-PatientInsurance');
+            metricsService.trackWorkflowProgress(
+                'Prior Authorization',
+                'started',
+                'Step1-PatientInsurance',
+                0,
+                4
+            );
+        }
+    }, [isOpen, caseId]);
 
     useEffect(() => {
         if (nexusOutput?.voiceCapturedFindings) {
@@ -230,6 +275,9 @@ export const InsurancePreAuthModal: React.FC<InsurancePreAuthModalProps> = ({
     };
 
     const handleNextStep = async () => {
+        // Mark end of current step
+        metricsService.markStepEnd(`Step${currentStep}-${['PatientInsurance', 'ClinicalDetails', 'AdmissionCost', 'DocumentsGenerate'][currentStep - 1]}`);
+
         if (currentStep === 4) {
             if (nexusOutput) {
                 setGeneratingStatement(true);
@@ -253,38 +301,144 @@ export const InsurancePreAuthModal: React.FC<InsurancePreAuthModalProps> = ({
                 setGeneratingStatement(false);
             }
         }
+
+        const nextStep = currentStep + 1;
+        const stepNames = ['PatientInsurance', 'ClinicalDetails', 'AdmissionCost', 'DocumentsGenerate'];
+
+        // Mark start of next step
+        if (nextStep <= 4) {
+            metricsService.markStepStart(`Step${nextStep}-${stepNames[nextStep - 1]}`);
+            metricsService.trackWorkflowProgress(
+                'Prior Authorization',
+                'in_progress',
+                stepNames[nextStep - 1],
+                currentStep,
+                4
+            );
+        }
+
         setCurrentStep(prev => prev + 1);
     };
 
-    const handlePrevStep = () => setCurrentStep(prev => prev - 1);
+    const handlePrevStep = () => {
+        const currentStepName = ['PatientInsurance', 'ClinicalDetails', 'AdmissionCost', 'DocumentsGenerate'][currentStep - 1];
+        const prevStepName = ['PatientInsurance', 'ClinicalDetails', 'AdmissionCost', 'DocumentsGenerate'][currentStep - 2] || 'Start';
 
-    const handleSubmit = () => {
+        metricsService.markStepEnd(`Step${currentStep}-${currentStepName}`);
+        metricsService.logAudit({
+            action: 'navigate_previous_step',
+            entityType: 'workflow',
+            entityId: caseId,
+            fieldName: 'current_step',
+            oldValue: `Step${currentStep}`,
+            newValue: `Step${currentStep - 1}`,
+            source: 'navigation'
+        });
+
+        setCurrentStep(prev => prev - 1);
+    };
+
+    const handleSubmit = async () => {
         if (!doctorConfirmed || !nexusOutput) return;
 
         setIsSubmitting(true);
 
-        setTimeout(() => {
-            const submission = createPreAuthSubmission(
-                nexusOutput,
-                selectedDxIndex,
-                severityOverride.overridden ? {
-                    original: nexusOutput.severity.phenoIntensity,
-                    overridden: Number(severityOverride.newSeverity) || 0,
-                    justification: severityOverride.justification
-                } : null,
-                '',
-                uploadedDocuments,
-                testResults,
-                consultationInfo.doctorName,
-                consultationInfo.doctorLicense
-            );
+        setTimeout(async () => {
+            try {
+                // Mark end of workflow
+                metricsService.markStepEnd('Step4-DocumentsGenerate');
 
-            submission.medicalNecessityStatement = medicalNecessity; // Override if doctor edited it
+                // Calculate claim readiness using rule engine
+                const claimReadinessResult = claimReadinessEngine.calculateClaimReadiness({
+                    chiefComplaint: formData.section4_ClinicalDetails?.chiefComplaints,
+                    diagnosis: formData.section4_ClinicalDetails?.provisionalDiagnosis,
+                    icdCode: formData.section4_ClinicalDetails?.icd10Code || 'A90',
+                    icdConfidence: 'high',
+                    duration: 5,
+                    treatmentPlan: medicalNecessity,
+                    procedures: [],
+                    policyActive: true,
+                    policyNumber: formData.section2_PolicyDetails?.policyNumber,
+                    insurerName: formData.section2_PolicyDetails?.insuranceCompanyName,
+                    tpaName: formData.section1_TpaInsurer?.tpaName,
+                    sumInsured: formData.section2_PolicyDetails?.sumInsured || 500000,
+                    hospitalBill: formData.section6_CostEstimate?.totalRoomCharges || 21580,
+                    policyLimit: formData.section2_PolicyDetails?.sumInsured || 500000,
+                    investigations: ['CBC', 'ESR', 'CRP', 'Dengue Profile'],
+                    vitalsAbnormal: true,
+                    investigationsOrdered: true,
+                    admissionJustified: true,
+                    consentProvided: doctorConfirmed,
+                    signaturePresent: true
+                });
 
-            const tpaDocument = medicalNecessity; // Use IRDAI form
-            setIsSubmitting(false);
-            onSubmit(submission, tpaDocument);
-            onClose();
+                // Save claim readiness to database
+                await metricsService.calculateAndSaveClaimReadiness({
+                    chiefComplaint: claimReadinessResult.breakdown.chiefComplaint.score,
+                    diagnosis: claimReadinessResult.breakdown.diagnosis.score,
+                    treatment: claimReadinessResult.breakdown.treatment.score,
+                    policy: claimReadinessResult.breakdown.policyValidation.score,
+                    bill: claimReadinessResult.breakdown.billingValidation.score,
+                    investigations: claimReadinessResult.breakdown.investigations.score,
+                    medicalNecessity: claimReadinessResult.breakdown.medicalNecessity.score,
+                    insurance: claimReadinessResult.breakdown.insuranceDetails.score,
+                    consent: claimReadinessResult.breakdown.patientConsent.score
+                });
+
+                // Track workflow completion
+                const workflowDuration = Date.now() - workflowStartTime;
+                await metricsService.trackWorkflowProgress(
+                    'Prior Authorization',
+                    'completed',
+                    'DocumentsGenerate',
+                    4,
+                    4
+                );
+
+                // Log submission audit entry
+                await metricsService.logAudit({
+                    action: 'submit_workflow',
+                    entityType: 'patient_case',
+                    entityId: caseId,
+                    fieldName: 'workflow_status',
+                    oldValue: 'in_progress',
+                    newValue: 'completed',
+                    reason: 'User submitted prior authorization',
+                    source: 'insurance_preauth_modal'
+                });
+
+                // Create submission
+                const submission = createPreAuthSubmission(
+                    nexusOutput,
+                    selectedDxIndex,
+                    severityOverride.overridden ? {
+                        original: nexusOutput.severity.phenoIntensity,
+                        overridden: Number(severityOverride.newSeverity) || 0,
+                        justification: severityOverride.justification
+                    } : null,
+                    '',
+                    uploadedDocuments,
+                    testResults,
+                    consultationInfo.doctorName,
+                    consultationInfo.doctorLicense
+                );
+
+                submission.medicalNecessityStatement = medicalNecessity;
+                const tpaDocument = medicalNecessity;
+
+                setIsSubmitting(false);
+                onSubmit(submission, tpaDocument);
+                onClose();
+            } catch (error) {
+                console.error('Error during submission:', error);
+                await metricsService.trackError({
+                    errorType: 'SubmissionError',
+                    message: String(error),
+                    severity: 'high',
+                    recovered: false
+                });
+                setIsSubmitting(false);
+            }
         }, 1500);
     };
 
