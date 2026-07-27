@@ -201,3 +201,47 @@ textarea.form-input {
   display: block !important;
   width: 100% !important;
 }
+
+/* Fix form section styling - prevent border intersection issues */
+.form-section, [class*="bg-white"][class*="border"] div {
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Fix outline intersection on focused inputs */
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(15, 148, 136, 0.1), 0 0 0 1px #0f9488 !important;
+}
+
+/* Ensure section headers don't have outline conflicts */
+h3[class*="text-opd"], h3[class*="border"] {
+  outline: none !important;
+  border-top: none !important;
+}
+
+/* Fix label alignment and text overflow */
+label {
+  display: flex;
+  align-items: center;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Prevent input borders from conflicting with parent borders */
+input, select, textarea {
+  box-sizing: border-box !important;
+}
+
+/* Fix fieldset and grouped form element spacing */
+fieldset {
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Ensure rounded containers work properly with nested elements */
+[class*="rounded-lg"] [class*="border"], [class*="rounded-xl"] [class*="border"] {
+  border-collapse: separate;
+  border-spacing: 0;
+}
