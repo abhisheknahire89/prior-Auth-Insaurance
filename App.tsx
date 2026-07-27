@@ -4,7 +4,15 @@ import { PreAuthShell } from './components/PreAuthShell';
 import { AuthModal } from './components/AuthModal';
 
 const AppContent: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, loginAsGuest } = useAuth();
+  const [guestInitialized, setGuestInitialized] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!loading && !user && !guestInitialized) {
+      loginAsGuest();
+      setGuestInitialized(true);
+    }
+  }, [loading, user, loginAsGuest, guestInitialized]);
 
   if (loading) {
     return (
@@ -15,7 +23,11 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <AuthModal isOpen={true} onClose={() => {}} />;
+    return (
+      <div className="min-h-screen bg-opd-bg flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-opd-primary/20 border-t-opd-primary rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
